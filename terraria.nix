@@ -16,10 +16,10 @@ let
 
   serverConfig = {
     world = cfg.worldPath;
-    autocreate = (builtins.getAttr cfg.autoCreatedWorldSize worldSizeMap);
+    autocreate = builtins.getAttr cfg.autoCreatedWorldSize worldSizeMap;
     maxplayers = cfg.maxPlayers;
-    port = cfg.port;
-    password = cfg.password;
+    inherit (cfg) port;
+    inherit (cfg) password;
     motd = cfg.messageOfTheDay;
     banlist = cfg.banListPath;
     secure = if cfg.secure then 1 else 0;
@@ -27,7 +27,7 @@ let
   }
   // cfg.extraSettings;
   serverConfigString = lib.generators.toINIWithGlobalSection { } {
-    globalSection = (lib.filterAttrsRecursive (n: v: v != null) serverConfig);
+    globalSection = lib.filterAttrsRecursive (n: v: v != null) serverConfig;
   };
   serverConfigFile = pkgs.writeText "config.ini" serverConfigString;
 
@@ -165,6 +165,15 @@ in
           Extra game configuration that will go into a config.ini and passed to -config
         '';
       };
+
+      adminUsers = lib.mkOption {
+        type = lib.types.listOf lib.types.str;
+        default = [ ];
+        example = [
+          "root"
+        ];
+        description = "System users allowed to administrate the terraria server through tmux";
+      };
     };
   };
 
@@ -180,6 +189,13 @@ in
     users.groups.terraria = {
       gid = config.ids.gids.terraria;
     };
+
+    # Set up admin users
+    users.users = lib.mkMerge (
+      map (username: {
+        ${username}.extraGroups = [ "terraria" ];
+      }) cfg.adminUsers
+    );
 
     systemd.services.terraria-server = {
       description = "Terraria Server Service";
