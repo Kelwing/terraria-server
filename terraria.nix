@@ -178,24 +178,27 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    users.users.terraria = {
-      description = "Terraria server service user";
-      group = "terraria";
-      home = cfg.dataDir;
-      createHome = true;
-      uid = config.ids.uids.terraria;
-    };
+    users.users = lib.mkMerge [
+      {
+        terraria = {
+          description = "Terraria server service user";
+          group = "terraria";
+          home = cfg.dataDir;
+          createHome = true;
+          uid = config.ids.uids.terraria;
+        };
+      }
+      # Admin users
+      (lib.mkMerge (
+        map (username: {
+          ${username}.extraGroups = [ "terraria" ];
+        }) cfg.adminUsers
+      ))
+    ];
 
     users.groups.terraria = {
       gid = config.ids.gids.terraria;
     };
-
-    # Set up admin users
-    users.users = lib.mkMerge (
-      map (username: {
-        ${username}.extraGroups = [ "terraria" ];
-      }) cfg.adminUsers
-    );
 
     systemd.services.terraria-server = {
       description = "Terraria Server Service";
